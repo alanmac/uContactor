@@ -11,6 +11,10 @@ using Umbraco.Core.Persistence;
 using Umbraco.Web.Mvc;
 using Umbraco.Web.WebApi;
 
+using Umbraco.Core;
+using Umbraco.Core.Models.Membership;
+using Umbraco.Core.Security;
+
 namespace Umbraco.Contact.Controllers
 {
     //[Web.WebApi.UmbracoAuthorize]
@@ -180,14 +184,18 @@ namespace Umbraco.Contact.Controllers
         {
             try
             {
+                //https://our.umbraco.org/forum/developers/api-questions/50075-how-to-get-the-current-user-with-UserService
+                var auth = new HttpContextWrapper(HttpContext.Current).GetUmbracoAuthTicket();
+                var currentUmbracoUser = ApplicationContext.Services.UserService.GetByUsername(auth.Name);
+
                 var contact = GetContact(id);
                 contact.ReplyMessage = message;
                 contact.RepliedDate = DateTime.Now;
-                contact.RepliedByUser = umbraco.helper.GetCurrentUmbracoUser().Id;
-                contact.Username = umbraco.helper.GetCurrentUmbracoUser().LoginName;
+                contact.RepliedByUser = currentUmbracoUser.Id;
+                contact.Username = currentUmbracoUser.Username;
                 contact.IsReplied = true;
 
-                MailMessage mail = new MailMessage(umbraco.helper.GetCurrentUmbracoUser().Email, contact.Email);
+                MailMessage mail = new MailMessage(currentUmbracoUser.Email, contact.Email);
                 mail.Subject = "Re: "+contact.Subject;
                 mail.Body = contact.ReplyMessage;
                 mail.IsBodyHtml = true;
@@ -200,7 +208,7 @@ namespace Umbraco.Contact.Controllers
 
                 return contact;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return null;
             }
